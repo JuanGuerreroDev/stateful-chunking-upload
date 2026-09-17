@@ -19,7 +19,7 @@ use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Control
  *         \Juanoecr\StatefulChunkingUpload\Facades\StatefulChunking::routes();
  *     });
  *
- * @param array{rate_limiting?: bool} $options
+ * @param  array{rate_limiting?: bool}  $options
  */
 final class ChunkUploadRoutes
 {
@@ -27,7 +27,7 @@ final class ChunkUploadRoutes
 
     /**
      * @param  array{rate_limiting?: bool}  $options  rate_limiting=true aplica los throttle
-     *         del paquete por operación (requiere que los limitadores estén registrados).
+     *                                                del paquete por operación (requiere que los limitadores estén registrados).
      */
     public static function register(array $options = []): void
     {
