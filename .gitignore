@@ -4,7 +4,6 @@
 /.agents
 /node_modules
 .npm
-composer.lock
 docker-compose.yml
 /docs/audits/
 /build/

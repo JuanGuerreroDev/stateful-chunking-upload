@@ -30,8 +30,13 @@ jobs:
           extensions: mbstring, json, redis, bcmath, pdo_sqlite
           coverage: pcov
 
-      - name: Install dependencies
-        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+      - name: Install dependencies (locked, reproducible)
+        # Deterministic single-version job: install the committed lock so style,
+        # static analysis and coverage run against a fixed dependency set instead
+        # of whatever floated to latest that day. Dependency bumps arrive
+        # deliberately via Dependabot lock updates; the compatibility matrix below
+        # still floats via `composer update`.
+        run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Check code style (Pint)
         run: vendor/bin/pint --test
@@ -106,8 +111,8 @@ jobs:
         # deliberately install older framework lines (Laravel 10/11) even when
         # Composer 2.9+ would block them for open security advisories. We are
         # exercising the package against those frameworks, not shipping them.
-        # The `quality` job keeps blocking ON, so a vulnerable *latest* stable
-        # still fails CI.
+        # Vulnerable *latest* stables are caught by osv-scanner, dependency-review
+        # and Dependabot rather than by this matrix.
         run: |
           composer require --dev "orchestra/testbench:^${{ matrix.testbench }}.0" --no-interaction --no-update
           composer update --prefer-stable --prefer-dist --no-interaction --no-progress --no-blocking

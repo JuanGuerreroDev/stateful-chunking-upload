@@ -35,8 +35,14 @@ jobs:
           extensions: mbstring, json, redis, bcmath, pdo_sqlite
           coverage: none
 
-      - name: Install dependencies
-        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+      - name: Install dependencies (locked, reproducible)
+        # Single-version security scan: install the committed lock so Psalm and
+        # the dependency docblocks it scans stay fixed. Floating them via
+        # `composer update` let a mid-week dep bump ship a docblock Psalm 6.17.x
+        # can't parse, crashing taint analysis. Dependency bumps now arrive
+        # deliberately through Dependabot lock updates; the compatibility matrix
+        # in tests.yml still floats on purpose.
+        run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Run Psalm taint analysis
         run: vendor/bin/psalm --taint-analysis --report=results.sarif --report-show-info=false --no-progress

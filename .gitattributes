@@ -1,18 +1,26 @@
-# Normalize line endings to LF in the repository, regardless of the
-# contributor's OS (prevents CRLF noise in diffs and CI on Windows).
-* text=auto eol=lf
+# Keep the published package tarball lean. `export-ignore` strips these paths
+# from the archive Composer builds for `--prefer-dist` installs, so consumers
+# never receive our development-only files.
+#
+# The repo now commits composer.lock for reproducible CI, but a library's lock
+# must never reach consumers (it has no effect on their resolution and only adds
+# noise). Stripping it here reconciles "commit the lock" with "ship like a lib".
 
-# Keep development-only paths out of the distributed package
-# (`composer install --prefer-dist` archives), so consumers download
-# only runtime code.
-/tests            export-ignore
-/.github          export-ignore
-/docs             export-ignore
-/scratch          export-ignore
-.gitattributes    export-ignore
-.gitignore        export-ignore
-.editorconfig     export-ignore
-phpstan.neon      export-ignore
-phpunit.xml.dist  export-ignore
-testbench.yaml    export-ignore
-pint.json         export-ignore
+# Dependency lock (reproducible CI only, never shipped)
+/composer.lock      export-ignore
+
+# Test suite
+/tests              export-ignore
+
+# CI / automation
+/.github            export-ignore
+
+# Tooling config
+/phpstan.neon       export-ignore
+/phpunit.xml.dist   export-ignore
+/psalm.xml          export-ignore
+
+# Repo dotfiles
+/.editorconfig      export-ignore
+/.gitignore         export-ignore
+/.gitattributes     export-ignore
