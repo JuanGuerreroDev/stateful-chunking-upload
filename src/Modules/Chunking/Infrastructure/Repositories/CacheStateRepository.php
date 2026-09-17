@@ -52,6 +52,7 @@ final class CacheStateRepository implements StateRepositoryInterface
             'file_size' => $session->fileSize,
             'uploaded_bytes' => $session->uploadedBytes,
             'total_chunks' => $session->totalChunks,
+            'chunk_size_bytes' => $session->chunkSizeBytes,
             'total_hash' => $session->totalHash->value,
             'fingerprint' => $session->fingerprint,
             'status' => $session->status->value,
@@ -94,6 +95,21 @@ final class CacheStateRepository implements StateRepositoryInterface
         $rawStatus = isset($sessionData['status']) && (is_string($sessionData['status']) || is_int($sessionData['status'])) ? $sessionData['status'] : 'pending';
         $rawCreatedAt = isset($sessionData['created_at']) && is_numeric($sessionData['created_at']) ? (int) $sessionData['created_at'] : 0;
         $rawExpiresAt = isset($sessionData['expires_at']) && is_numeric($sessionData['expires_at']) ? (int) $sessionData['expires_at'] : 0;
+        // Rehydrate chunk_size_bytes. saveSession() writes it as a positive int, read back
+        // here with the same defensive guards. A session persisted BEFORE this field existed
+        // (e.g. mid-upload during a rolling deploy) has no value: it falls back to the server's
+        // currently configured chunk size — the same one InitiateChunkRequest bounds
+        // total_chunks against — rather than a blind 2 MiB, so the size a client discovers
+        // stays the effective one. The literal 2097152 only covers a missing/invalid config.
+        $rawChunkSizeBytes = isset($sessionData['chunk_size_bytes'])
+            && is_numeric($sessionData['chunk_size_bytes'])
+            && (int) $sessionData['chunk_size_bytes'] > 0
+                ? (int) $sessionData['chunk_size_bytes']
+                : (static function (): int {
+                    $configured = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
+
+                    return is_numeric($configured) && (int) $configured > 0 ? (int) $configured : 2097152;
+                })();
         // A payload whose owner is absent, not a string, or no longer parseable yields
         // no owner — and a session with no owner belongs to nobody, so a corrupted or
         // hand-edited entry fails closed instead of becoming public.
@@ -111,7 +127,8 @@ final class CacheStateRepository implements StateRepositoryInterface
             createdAt: $rawCreatedAt,
             expiresAt: $rawExpiresAt,
             ownerId: $rawOwnerId,
-            uploadedBytes: $rawUploadedBytes
+            uploadedBytes: $rawUploadedBytes,
+            chunkSizeBytes: $rawChunkSizeBytes
         );
 
         if ($session->isExpired()) {

@@ -29,6 +29,14 @@ final class InitiateChunkSessionAction
 
         $rawTtl = config('stateful-chunking-upload.session_ttl', 21600);
         $ttl = is_numeric($rawTtl) ? (int) $rawTtl : 21600;
+
+        // Capture the effective chunk size at initiate. This is the same value
+        // InitiateChunkRequest bounds total_chunks against, so recording it here keeps
+        // the session's stored size and the accepted total_chunks derived from one
+        // reading of the config.
+        $rawChunkSize = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
+        $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+
         $now = time();
 
         $session = new ChunkSession(
@@ -40,7 +48,8 @@ final class InitiateChunkSessionAction
             fingerprint: $dto->fingerprint,
             createdAt: $now,
             expiresAt: $now + $ttl,
-            ownerId: $dto->ownerId
+            ownerId: $dto->ownerId,
+            chunkSizeBytes: $chunkSizeBytes
         );
 
         $this->repository->saveSession($session);

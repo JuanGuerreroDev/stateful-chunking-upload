@@ -128,6 +128,11 @@ final class ChunkingResponse implements Responsable
             'file_size' => $session->fileSize,
             'uploaded_bytes' => $session->uploadedBytes,
             'total_chunks' => $session->totalChunks,
+            // Published so clients self-configure their slicing to the server's chunk
+            // size instead of relying on an out-of-band convention. It is the value the
+            // session was initiated with, which is what InitiateChunkRequest bounds
+            // total_chunks against. Not sensitive: a public granularity constant.
+            'chunk_size_bytes' => $session->chunkSizeBytes,
             'total_hash' => $session->totalHash->value,
             'fingerprint' => $session->fingerprint,
             'status' => $session->status->value,
