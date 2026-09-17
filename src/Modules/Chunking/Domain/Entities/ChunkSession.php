@@ -28,7 +28,14 @@ final class ChunkSession
         public int $createdAt = 0,
         public int $expiresAt = 0,
         public ?SessionOwner $ownerId = null,
-        public int $uploadedBytes = 0
+        public int $uploadedBytes = 0,
+        // The chunk size (bytes) this session was chunked with, captured at initiate
+        // from the server config. Recorded on the session — rather than re-read from
+        // config each time — so a client discovers the size the session actually uses
+        // even if an operator changes the config while the upload is in flight. The
+        // 2 MiB default mirrors the config default and only covers legacy sessions
+        // rehydrated without the field; the initiate path always passes the real value.
+        public readonly int $chunkSizeBytes = 2097152
     ) {
         if (empty($this->chunksMap)) {
             for ($i = 0; $i < $totalChunks; $i++) {
@@ -184,6 +191,7 @@ final class ChunkSession
             'file_size' => $this->fileSize,
             'uploaded_bytes' => $this->uploadedBytes,
             'total_chunks' => $this->totalChunks,
+            'chunk_size_bytes' => $this->chunkSizeBytes,
             'total_hash' => $this->totalHash->value,
             'fingerprint' => $this->fingerprint,
             'owner_id' => $this->ownerId?->value,

@@ -6,6 +6,7 @@
         "file_size": 31,
         "uploaded_bytes": 0,
         "total_chunks": 1,
+        "chunk_size_bytes": 2097152,
         "total_hash": "3ad36ea0cae7c268660c2ee9417e46f2e64518cd86fb03a88e38e070351b780e",
         "fingerprint": "contract-fixture",
         "status": "pending",
