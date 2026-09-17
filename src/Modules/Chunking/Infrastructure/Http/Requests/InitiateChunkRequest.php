@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests;
 
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
  * Validates the shape of an initiate request. Authentication is deliberately absent:
@@ -14,6 +16,38 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class InitiateChunkRequest extends FormRequest
 {
+    /**
+     * The server-configured chunk size in bytes, sanitised. Single source of truth for
+     * the `total_chunks` bounds (see {@see rules()}) and the discovery hint echoed on a
+     * validation failure (see {@see failedValidation()}).
+     */
+    private function configuredChunkSizeBytes(): int
+    {
+        $raw = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
+
+        return is_numeric($raw) && (int) $raw > 0 ? (int) $raw : 2097152;
+    }
+
+    /**
+     * Echo `chunk_size_bytes` alongside the standard validation errors.
+     *
+     * `total_chunks` is bounded against the server's chunk size, so a client that guessed
+     * a different size (its 2 MiB default vs. a 12 MiB server, say) is rejected here before
+     * it ever sees a successful response carrying the real value. Surfacing the size on the
+     * failure lets the client learn it, rebuild its plan and retry initiate once — the
+     * zero-config path that stops the consumer hardcoding the chunk size on the front end.
+     * The `message`/`errors` shape is preserved so existing clients (and
+     * `assertJsonValidationErrors`) keep working.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        throw new HttpResponseException(response()->json([
+            'message' => $validator->errors()->first(),
+            'errors' => $validator->errors()->messages(),
+            'chunk_size_bytes' => $this->configuredChunkSizeBytes(),
+        ], 422));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -105,8 +139,7 @@ final class InitiateChunkRequest extends FormRequest
                 // and stage gigabytes of oversized chunks on disk (storage-amplification DoS),
                 // since max_file_size_bytes only caps the *declared* size, never the bytes
                 // actually written. The +1 absorbs off-by-one rounding on the final chunk.
-                $rawChunkSize = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
-                $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+                $chunkSizeBytes = $this->configuredChunkSizeBytes();
 
                 $fileSizeInput = $this->input('file_size');
                 $expectedChunks = is_numeric($fileSizeInput) && (int) $fileSizeInput > 0
